@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 import requests
-from dotenv import load_dotenv
 from docx import Document
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -10,7 +9,6 @@ from io import BytesIO
 import markdown2
 
 # Load API Key
-load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama3-70b-8192"

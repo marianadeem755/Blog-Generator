@@ -54,4 +54,3 @@ pip install -r requirements.txt
 
 - Powered by the **LLaMA 3 AI model**.
 - Built with [Streamlit](https://streamlit.io/).
-``

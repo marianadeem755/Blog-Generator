@@ -1,4 +1,6 @@
 streamlit
+python-dotenv
 requests
-
-
+python-docx
+reportlab
+markdown2

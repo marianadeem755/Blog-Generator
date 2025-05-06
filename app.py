@@ -1,13 +1,15 @@
 import streamlit as st
 import os
 import requests
-from docx import Document
 from dotenv import load_dotenv
+from docx import Document
+from docx.shared import Pt
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import LETTER
 from io import BytesIO
 import markdown2
+import re
 
 # Load API Key
 load_dotenv()
@@ -15,7 +17,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama3-70b-8192"
 
-# Inject Custom CSS for background, sidebar, buttons, and text visibility
+# ---- Inject Custom CSS ----
 st.markdown("""
     <style>
     .stApp {
@@ -23,33 +25,26 @@ st.markdown("""
         font-family: 'Segoe UI', sans-serif;
         color: #ffffff;
     }
-
     section[data-testid="stSidebar"] > div:first-child {
         background-color: #1f1f1f;
         padding: 30px 10px 20px 10px;
     }
-
     .sidebar-links a {
         font-size: 18px;
         color: #ffcc00;
         text-decoration: none;
     }
-
     .sidebar-links a:hover {
         color: #00ffff;
         text-decoration: underline;
     }
-
     h1, h3, h2, h4 {
         color: #ffd700;
         text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
     }
-
     p {
         color: #f1f1f1;
     }
-
-    /* Generate & Download Button Styling */
     .stButton button, .download-button button {
         background: linear-gradient(90deg, #f7971e, #ffd200) !important;
         color: #000000 !important;
@@ -59,12 +54,10 @@ st.markdown("""
         padding: 10px 20px;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
-
     .stButton button:hover, .download-button button:hover {
         transform: scale(1.02);
         box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
     }
-
     .connect-title {
         font-size: 24px;
         color: #32a852;
@@ -76,21 +69,18 @@ st.markdown("""
 
 # ---- Sidebar ----
 st.sidebar.markdown("""<div class="connect-title">🔗 Connect With Me</div>""", unsafe_allow_html=True)
-st.sidebar.markdown("""
-<div class="sidebar-links">
+st.sidebar.markdown("""<div class="sidebar-links">
 <a href="https://github.com/marianadeem755" target="_blank">🌐 GitHub</a><br>
 <a href="https://www.kaggle.com/marianadeem755" target="_blank">📊 Kaggle</a><br>
 <a href="mailto:marianadeem755@gmail.com">📧 Email</a><br>
 <a href="https://huggingface.co/maria355" target="_blank">🤗 Hugging Face</a>
-</div>
-""", unsafe_allow_html=True)
+</div>""", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📖 About This App", unsafe_allow_html=True)
+st.sidebar.markdown("""<span style='color: #32a852; font-size: 18px;'>📖 About This App</span>""", unsafe_allow_html=True)
 st.sidebar.markdown("""
 This app uses the powerful LLaMA 3 AI model to generate high-quality blog posts in minutes. 
 Simply enter a blog topic, select the tone, and choose your preferred download format (Markdown, PDF, or Word).
-Perfect for bloggers, content creators, and AI enthusiasts looking to quickly create engaging content!
 """, unsafe_allow_html=True)
 
 # ---- Title and Inputs ----
@@ -166,19 +156,31 @@ Start writing the blog now.
 
                 elif format_choice == "Word (.docx)":
                     doc = Document()
-                    lines = blog.split('\n')
-                    for line in lines:
-                        if line.startswith('#'):
-                            level = line.count('#')
-                            text = line.replace('#', '').strip()
-                            doc.add_heading(text, level=min(level, 4))
-                        elif line.startswith('- ') or line.startswith('* '):
-                            doc.add_paragraph(line[2:].strip(), style='List Bullet')
-                        elif line.strip() == '':
-                            doc.add_paragraph('')
+                    style = doc.styles['Normal']
+                    font = style.font
+                    font.name = 'Segoe UI'
+                    font.size = Pt(11)
+
+                    for line in blog.split('\n'):
+                        line = line.strip()
+                        if not line or line in ['---', '===', '---', '___']:
+                            continue  # Skip Markdown separators
+
+                        # Clean markdown formatting for Word
+                        line = re.sub(r'\*\*(.*?)\*\*', r'\1', line)  # remove bold
+                        line = re.sub(r'\*(.*?)\*', r'\1', line)      # remove italic
+                        line = re.sub(r'^-{3,}$', '', line)            # remove --- lines
+                        line = re.sub(r'^={3,}$', '', line)            # remove === lines
+
+                        if re.match(r"^#{1,6} ", line):
+                            level = line.count("#", 0, line.find(" "))
+                            heading = line.replace("#", "").strip()
+                            doc.add_heading(heading, level=min(level, 4))
+                        elif re.match(r"^[-*] ", line):
+                            doc.add_paragraph(line[2:], style='List Bullet')
                         else:
-                            clean_text = line.replace('**', '').replace('*', '').replace('`', '').strip()
-                            doc.add_paragraph(clean_text)
+                            doc.add_paragraph(line)
+
                     doc_buffer = BytesIO()
                     doc.save(doc_buffer)
                     doc_buffer.seek(0)
